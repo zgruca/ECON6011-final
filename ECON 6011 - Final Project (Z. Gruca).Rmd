@@ -1,0 +1,130 @@
+---
+title: "COVID-19 Fatality Rates in 10 Georgia Counties from January to November 2020"
+author: "Zachary Gruca"
+date: "2025-07-24"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r, setup, include = FALSE, echo = FALSE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(rmarkdown)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include = FALSE}
+getwd()
+```
+
+
+# ECON 6011: R Coding and Analysis I
+
+## Final Project (Summer 2025)
+
+### Georgia Institute of Technology
+
+#### Abstract\
+
+The research objective for this project is to compare the fatality rates of ten Georgia counties with which I am personally familiar to the fatality rate of all U.S. counties nationally. The familiarity I have with respect to the Georgia counties is the primary motivation for choosing them, but they also represent widely different demographics and geographies. The ten reference counties are as follows: Bartow, Clayton, Cobb, Coffee, Forsyth, Fulton, Gwinnett, Lowndes, Macon, and Paulding. The data for this project were obtained from **[openICSPR](https://www.openicpsr.org/openicpsr/project/128303/version/V1/view?path=/openicpsr/128303/fcr:versions/V1&type=project)** and were originally cataloged by **The New York Times** to track the cases and deaths of COVID-19 from the months of January through late November 2020. The data file contains a comprehensive chronological list of reported cases of infection and deaths inclusive of all U.S. counties for the dates in question.  
+
+Thanks for reading.  
+
+This project is also available on my Github profile, **[zgruca](https://github.com/zgruca)** under the **ECON6011-final** repository.
+
+\newpage
+
+### Background
+
+The primary educational motivation for this project is to advance my knowledge of and proficiency with R in particular and my understanding of data science more generally. To this end, I chose a data set that could demonstrate my limited working knowledge of R syntax and data cleaning techniques while challenging myself with some more advanced visualization, in particular using the R package **ggplot2**. Furthermore, I am interested in how COVID-19 affected local communities in the State of Georgia, especially early in the 2020 global pandemic, so this data set helped me to determine how such communities (at the county level) were affected in relation to national and State averages.
+
+### The Data
+
+As mentioned in the abstract, the data set used for this project was obtained from **openICSPR**. The data are saved as a .txt file named us-counties.txt. As the data set is comma delimited, it is necessary to import the data as a .csv file. The data will be assigned to the object titled 'covid'. Below are the summary statistics for the us-counties.txt file.
+
+```{r, import, include = FALSE}
+covid <- read.csv('C:/Users/zacha/OneDrive/Desktop/R-Summer25/data/raw/us-counties.txt')
+```
+
+```{r, sumstats-1}
+summary(covid)
+```
+The variables contained in the data set are self-explanatory save one, 'fips', which is listed as an integer but is better classified as a string. 'Fips' refers to a federal identification number determined by area, similar to a zip code. However, since this information is redundant given the inclusion of State and county information, it will be eliminated from the data set. Furthermore, the 'date' variable must be redefined as a Date instead of a character, which will also be included in the cleaned data set. 
+
+```{r, datamod-1}
+covid <- covid[,-4]
+covid$date <- as.Date(covid$date, format="%Y-%m-%d")
+```
+
+\newpage
+
+After these two modifications,we are left with the following summary statistics:
+
+```{r, sumstats-2}
+summary(covid)
+```
+A problem with the data set is that, while it is conveniently organized chronologically by day from January to November, the variables 'cases' and 'deaths' are cumulative, meaning that one cannot easily retrieve the total cases and deaths without manipulating the data. Thus, it is necessary to extract data for all counties for the last day of reporting, which is November 22, 2020 as noted in the summary statistics. This can be done by using the 'max()' function in R and assigning a new variable for the extracted dates:
+
+```{r, datamod-2}
+last_date <- max(covid$date, na.rm = TRUE)
+covid_date <- covid[covid$date == last_date, ]
+```
+
+It is then possible to calculate the fatality rate for all U.S. counties in the data set by dividing the sum of all deaths by the sum of all cases, multiplying the quotient by 100, and assigning to a new object variable, 'fatality_rate'. I can add this new information to the data set by assigning the variable directly into the extant data set, 'covid_date'.
+
+```{r, datamod-3}
+covid_date$fatality_rate <- ifelse(covid_date$cases == 0, NA, covid_date$deaths / covid_date$cases) * 100
+```
+
+```{r, sumstats-3}
+summary(covid_date)
+```
+\newpage
+
+##### Data for Georgia and 10 Reference Counties\
+
+Now, I simply have to repeat this process for the State of Georgia and the ten reference counties of my choosing. I assign the variables 'ga_date' for the State of Georgia and 'county_date' for the ten Georgia counties. For the ten counties, I will also assign the variable 'all_counties' to extract the counties I need. Summary statistics for both the State of Georgia and the ten reference counties are found below.
+
+```{r, georgia_data}
+ga_date <- covid_date[covid_date$state == "Georgia",]
+summary(ga_date)
+```
+```{r, ga_county_data}
+all_counties <- c("Bartow", "Clayton", "Cobb", "Coffee", "Dekalb", "Forsyth", "Fulton", "Gwinnett", "Lowndes", "Paulding", "Macon")
+county_date <- ga_date[ga_date$county %in% all_counties, ]
+summary(county_date)
+```
+\newpage
+
+### Data Visualization
+
+
+```{r, histogram-1, message = FALSE}
+barplot <- ggplot(aes(x = county, y = fatality_rate), data = county_date) +
+  geom_bar(stat="identity", fill="steelblue") +
+  xlab("Georgia County") +
+  ylab("Fatality Rate (%)") +
+  labs(title="COVID-19 Fatality Rates in 10 Georgia Counties in 2020") +
+  labs(subtitle="vs. State and National Averages") +
+  labs(caption="Red line = F.R. in GA; Black line = F.R. in U.S.") +
+  geom_hline(aes(yintercept = 1.8132), linewidth = 2, color = "black", linetype = 3) +
+  geom_hline(aes(yintercept = 2.860), linewidth = 2, color = "red", linetype = 2) +
+  theme_light()
+
+print(barplot)
+```
+
+\newpage
+
+### Results and Next Steps
+
+In terms of what can be gleaned from the cleaned and visualized data set, the results indicate that the fatality rate for the State of Georgia, represented by the red line horizontal, is over one percent higher (2.860%) than the national average (1.8132%), which is represented by the black horizontal. Exactly half (5) of the ten reference counties are above the national fatality rate average, with one county (Macon) notably higher than the State and national averages at a surprising ~4.7% based on the visualization.
+
+Although not a direct part of my research question, it is noteworthy that Macon county is the smallest of the reference counties surveyed, which means that medical and other resources could have played a significant role in the increased fatality rate. By way of induction, a brief examination of the bar graph yields what seems to be a generally inverse correlation between increasing population size per county versus decreasing fatality rates, which would be an interesting next step in the analysis of this data set. One immediately noticeable exception is Forsyth county, which has the lowest fatality rate of the ten reference counties, which could indicate another variable that must needs be accounted for, namely, the average household income per county. Although Forsyth is smaller than several of the other counties with higher fatality rates, affluence could play a significant role in the resources available to a county, and perhaps even more so than population size. While there are many wealthy households in Fulton, which includes Atlanta, for instance, there are also many disadvantaged and poor communities in Fulton to influence the data.
+
+Overall, the objectives set out in the midterm leading up to this final project were satisfied. I was able to manipulate and clean the data as intended, and the data visualization in ggplot2 rendered even more beautifully than anticipated. I did, however, encounter some complications that needed to be resolved during final calculations, etc.
+
+In the midterm write-up, I did not account for zeroes in the divisor, which in this case is the variable 'cases'. This resulted in a Mean and Maximum of Infinity in the 3rd iteration of summary statistics. This produced inaccurate fatality rates for the cleaned data sets. I fixed this problem by including the 'ifelse' argument when adding the fatality rate to the data set, which turned a couple of otherwise problematic zeroes in the 'cases' column to NAs. Another problem I faced was an error message when producing the intended histogram. While I'm unsure whether this applies to histograms in general, when programming in ggplot2, it does not seem possible to define both x and y variables to a geom_histogram(), which is what I intended to create for my visualization of the data. Because I needed to define the x variable as county and the y variable as the fatality rate, however, it was necessary to use the geom_bar() function with the 'stat="identity"' modifier instead. With that said, the **ECON 6011: R Coding and Analysis I** course was sufficient for the programming I needed to accomplish for this particular project, as I did not resort to any additional packages, libraries, or functions that had not been covered in the course.
